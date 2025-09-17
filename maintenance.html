@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Project Original — Maintenance</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bungee:wght@400;700&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+  <link href="style.css" rel="stylesheet">
+</head>
+<body>
+  <div class="wrap">
+    <h1>🚧 Maintenance Mode</h1>
+    <p id="maintenance-message">Our site is currently under maintenance. Please check back soon!</p>
+  </div>
+
+  <footer>© 2025 Project Original</footer>
+
+  <script src="config.js"></script>
+  <script>
+    // Load custom maintenance message
+    document.addEventListener("DOMContentLoaded", () => {
+      if (typeof CONFIG !== "undefined") {
+        document.getElementById("maintenance-message").innerText = CONFIG.message;
+      }
+    });
+  </script>
+</body>
+</html>
