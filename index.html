@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Project Original — Launcher</title>
+<link href="https://fonts.googleapis.com/css2?family=Bungee:wght@400;700&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-1: #0f0f2a;
+    --bg-2: #0b153f;
+    --accent-1: #7b5cff;
+    --accent-2: #4fe0ff;
+    --accent-3: #ff66b3;
+    --muted: #cbd5ff;
+  }
+  * { box-sizing: border-box; }
+  body{
+    font-family:"Montserrat",sans-serif;
+    background: linear-gradient(180deg, var(--bg-1), var(--bg-2));
+    color: var(--muted);
+    margin:0; padding:0;
+    display:flex; align-items:center; justify-content:center;
+    min-height:100vh;
+    overflow-x:hidden;
+  }
+
+  .wrap{
+    max-width:800px; width:90%;
+    text-align:center;
+    padding:50px 25px;
+    background: rgba(15, 15, 42, 0.85);
+    border-radius:20px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+    animation: fadeIn 1s ease forwards;
+  }
+
+  @keyframes fadeIn {
+    0% { opacity:0; transform: translateY(20px); }
+    100% { opacity:1; transform: translateY(0); }
+  }
+
+  h1{
+    font-family:"Bungee", sans-serif;
+    color:white;
+    font-size:48px;
+    margin-bottom:16px;
+    text-shadow: 2px 2px 6px rgba(0,0,0,0.4);
+  }
+  p{
+    color:rgba(255,255,255,0.75);
+    margin-bottom:40px;
+    font-size:18px;
+  }
+
+  .btn{
+    display:inline-block;
+    padding:16px 32px;
+    margin:10px;
+    border-radius:14px;
+    font-weight:700;
+    font-size:16px;
+    cursor:pointer;
+    text-decoration:none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .btn-primary{
+    background: linear-gradient(90deg,var(--accent-1),var(--accent-3));
+    color:white;
+    box-shadow: 0 8px 24px rgba(123,92,255,0.3);
+  }
+  .btn-primary:hover{
+    transform: translateY(-4px) scale(1.05);
+    box-shadow: 0 12px 28px rgba(123,92,255,0.5);
+  }
+
+  .btn-secondary{
+    background: transparent;
+    border:2px solid var(--accent-2);
+    color:var(--accent-2);
+  }
+  .btn-secondary:hover{
+    transform: translateY(-4px) scale(1.05);
+    box-shadow: 0 8px 20px rgba(79,224,255,0.3);
+  }
+
+  .nav{
+    margin-top:30px;
+  }
+  .nav a{
+    color: var(--accent-2);
+    margin: 0 10px;
+    text-decoration: none;
+    font-weight:600;
+    transition: color 0.2s ease;
+  }
+  .nav a:hover{
+    color: var(--accent-3);
+  }
+
+  footer{
+    margin-top:50px;
+    font-size:14px;
+    color:rgba(255,255,255,0.5);
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Project Original Launcher</h1>
+    <p>Get the official launcher and join our community to stay updated with the latest news and features.</p>
+
+    <a class="btn btn-primary" href="/downloads/ProjectOriginalLauncher.zip" download>
+      ⬇️ Download Launcher
+    </a>
+    <a class="btn btn-secondary" href="https://discord.gg/YOUR_INVITE" target="_blank">
+      💬 Join Discord
+    </a>
+
+    <div class="nav">
+      <a href="tos.html">Terms of Services</a> |
+      <a href="info.html">Info</a> |
+      <a href="credits.html">Web Credits</a>
+    </div>
+
+    <footer>
+      © 2025 Project Original — Powered by Vercel
+    </footer>
+  </div>
+</body>
+</html>
