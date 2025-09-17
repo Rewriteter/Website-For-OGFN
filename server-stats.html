@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Project Original — Server Stats</title>
+<link href="https://fonts.googleapis.com/css2?family=Bungee:wght@400;700&family=Montserrat:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-1: #0f0f2a;
+    --bg-2: #0b153f;
+    --accent-1: #7b5cff; --accent-2: #4fe0ff; --accent-3: #ff66b3;
+    --muted: #cbd5ff;
+  }
+  body.theme-light { --bg-1: #f6f8ff; --bg-2:#e9f4ff; --muted:#1b2b4a; }
+
+  body{ font-family:"Montserrat",sans-serif; background: linear-gradient(180deg,var(--bg-1),var(--bg-2)); color:var(--muted); margin:0; padding:28px; }
+  .wrap{ max-width:1100px; margin:0 auto; }
+
+  .top {
+    display:flex; gap:16px; align-items:center; justify-content:space-between; margin-bottom:18px;
+  }
+  h1{ font-family:"Bungee",sans-serif; font-size:36px; margin:6px 0; color:white; text-shadow: 0 6px 24px rgba(123,92,255,0.14); }
+
+  .card{ background:rgba(0,0,0,0.45); padding:18px; border-radius:14px; box-shadow: 0 12px 30px rgba(0,0,0,0.6); }
+
+  form{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:12px; }
+  input, button{ padding:10px 12px; border-radius:10px; border:0; outline:none; font-weight:600; }
+  input{ min-width:180px; }
+  button.action{ background: linear-gradient(90deg,var(--accent-1),var(--accent-3)); color:white; cursor:pointer; }
+  button.secondary{ background:transparent; border:2px solid var(--accent-2); color:var(--accent-2); cursor:pointer; }
+
+  .server-list{ margin-top:12px; display:grid; gap:10px; }
+  .server-item{ display:flex; justify-content:space-between; align-items:center; padding:12px; border-radius:10px; background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.04)); }
+  .server-left{ display:flex; gap:12px; align-items:center; }
+  .status-dot{
+    width:14px; height:14px; border-radius:50%;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+  }
+  .status-online { background: linear-gradient(90deg,#6ee7b7,#10b981); animation: pulseGreen 1.6s infinite; box-shadow: 0 8px 24px rgba(16,185,129,0.18); }
+  .status-offline { background: linear-gradient(90deg,#ef4444,#e11d48); animation: pulseRed 1.6s infinite; box-shadow: 0 8px 24px rgba(225,29,72,0.14); }
+  @keyframes pulseGreen { 0% { transform: scale(1); opacity:0.95 } 50% { transform:scale(1.18); opacity:0.65 } 100% { transform:scale(1); opacity:0.95 } }
+  @keyframes pulseRed { 0% { transform: scale(1); opacity:0.95 } 50% { transform:scale(1.18); opacity:0.65 } 100% { transform:scale(1); opacity:0.95 } }
+
+  .meta{ font-size:13px; color:rgba(255,255,255,0.78); }
+  .actions{ display:flex; gap:8px; align-items:center; }
+  .small{ font-size:12px; color:rgba(255,255,255,0.6) }
+
+  .hint{ margin-top:10px; color:rgba(255,255,255,0.6); font-size:13px; }
+
+  a.navlinks{ color:var(--accent-2); text-decoration:none; font-weight:700; margin-left:8px; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <h1>Server Stats</h1>
+        <div class="small">Add servers to monitor. Ping uses a browser image-load trick (works without backend).</div>
+      </div>
+      <div>
+        <a href="index.html" class="navlinks">⬅️ Back to Launcher</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <form id="addForm">
+        <input id="srvName" placeholder="Server name (friendly)" />
+        <input id="srvIp" placeholder="IP or hostname (example: example.com)" />
+        <input id="srvPort" placeholder="Port (optional, default 80/443)" />
+        <button class="action" type="submit">Add / Save</button>
+        <button type="button" class="secondary" id="refreshAll">Refresh All</button>
+      </form>
+
+      <div id="serverList" class="server-list"></div>
+
+      <div class="hint">
+        <strong>How ping works:</strong> the page tries to load an image (favicon) from the server over HTTPS and HTTP. If an image loads within a timeout we mark the server online. This approach works in browsers without special permissions but is not as reliable as server-side ICMP. For full reliability use a serverless ping endpoint.
+      </div>
+    </div>
+  </div>
+
+<script>
+/* Server monitor:
+   - stores servers in localStorage (po_servers_v1)
+   - pings by creating Image() and trying https://host:port/favicon.ico then http
+   - updates UI with animated dot and last checked time
+*/
+
+const STORAGE_KEY = 'po_servers_v1';
+
+function loadServers(){
+  return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+}
+function saveServers(arr){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+  // let main page know server count changed
+  localStorage.setItem('po_servers_updated_at', Date.now());
+}
+
+const listEl = document.getElementById('serverList');
+
+function render(){
+  const items = loadServers();
+  listEl.innerHTML = '';
+  items.forEach((s, idx) => {
+    const el = document.createElement('div');
+    el.className = 'server-item';
+    el.innerHTML = `
+      <div class="server-left">
+        <div id="dot-${idx}" class="status-dot status-offline"></div>
+        <div>
+          <div style="font-weight:700">${escapeHtml(s.name || s.host)}</div>
+          <div class="meta">${escapeHtml(s.host)}${s.port ? ':'+s.port : ''} • <span id="last-${idx}">${s.lastChecked ? timeAgo(s.lastChecked) : 'Not checked'}</span></div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="secondary" data-action="check" data-idx="${idx}">Check</button>
+        <button class="secondary" data-action="edit" data-idx="${idx}">Edit</button>
+        <button class="secondary" data-action="remove" data-idx="${idx}">Remove</button>
+      </div>
+    `;
+    listEl.appendChild(el);
+    // set initial status class
+    setStatusDot(idx, s.status === 'online');
+  });
+}
+
+function setStatusDot(idx, online){
+  const dot = document.getElementById('dot-'+idx);
+  if (!dot) return;
+  dot.classList.remove('status-offline','status-online');
+  dot.classList.add(online ? 'status-online' : 'status-offline');
+}
+
+// Utility
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
+function timeAgo(ts){
+  if (!ts) return 'Never';
+  const diff = Math.floor((Date.now()-ts)/1000);
+  if (diff<60) return diff+'s ago';
+  if (diff<3600) return Math.floor(diff/60)+'m ago';
+  if (diff<86400) return Math.floor(diff/3600)+'h ago';
+  return Math.floor(diff/86400)+'d ago';
+}
+
+// Add form
+document.getElementById('addForm').addEventListener('submit', (e)=>{
+  e.preventDefault();
+  const name = document.getElementById('srvName').value.trim();
+  const host = document.getElementById('srvIp').value.trim();
+  const port = document.getElementById('srvPort').value.trim();
+  if (!host) { alert('Provide host/IP'); return; }
+  const arr = loadServers();
+  arr.push({ name: name || host, host, port: port || '', status: 'unknown', lastChecked: null });
+  saveServers(arr);
+  render();
+  // auto-check the newly added one
+  checkServer(arr.length-1);
+  // clear inputs
+  document.getElementById('srvName').value=''; document.getElementById('srvIp').value=''; document.getElementById('srvPort').value='';
+  // let main page know count updated
+  window.dispatchEvent(new Event('storage'));
+});
+
+// delegate button actions
+listEl.addEventListener('click', (ev)=>{
+  const btn = ev.target.closest('button');
+  if (!btn) return;
+  const action = btn.getAttribute('data-action');
+  const idx = parseInt(btn.getAttribute('data-idx'),10);
+  if (action === 'check') checkServer(idx);
+  if (action === 'remove') {
+    if (!confirm('Remove this server?')) return;
+    const arr = loadServers(); arr.splice(idx,1); saveServers(arr); render();
+  }
+  if (action === 'edit'){
+    const arr = loadServers();
+    const s = arr[idx];
+    document.getElementById('srvName').value = s.name;
+    document.getElementById('srvIp').value = s.host;
+    document.getElementById('srvPort').value = s.port;
+    // remove old entry (user can edit and save new)
+    arr.splice(idx,1);
+    saveServers(arr);
+    render();
+  }
+});
+
+// Refresh all
+document.getElementById('refreshAll').addEventListener('click', ()=>{
+  const arr = loadServers();
+  arr.forEach((_,i)=>checkServer(i));
+});
+
+// ping logic using image loading
+function checkServer(idx){
+  const arr = loadServers();
+  const s = arr[idx];
+  if (!s) return;
+  // mark checking
+  setStatusDot(idx,false);
+  const host = s.host;
+  const port = s.port || '';
+  const tryUrls = [];
+
+  // Try HTTPS first (favicon), then HTTP
+  const portSuffixHttps = port ? ':'+port : '';
+  tryUrls.push(`https://${host}${portSuffixHttps}/favicon.ico`);
+  tryUrls.push(`https://${host}${portSuffixHttps}/`);
+  tryUrls.push(`http://${host}${portSuffixHttps}/favicon.ico`);
+  tryUrls.push(`http://${host}${portSuffixHttps}/`);
+
+  let tried = 0;
+  let succeeded = false;
+  const TIMEOUT = 4000;
+
+  function attempt(url){
+    if (succeeded) return;
+    const img = new Image();
+    let timer = setTimeout(()=> {
+      img.src = ''; // cancel
+      next();
+    }, TIMEOUT);
+
+    img.onload = () => {
+      clearTimeout(timer);
+      succeeded = true;
+      s.status = 'online';
+      s.lastChecked = Date.now();
+      saveServers(arr);
+      renderSingleStatus(idx);
+    };
+    img.onerror = () => {
+      clearTimeout(timer);
+      next();
+    };
+    // add cache buster to avoid cached 404
+    img.src = url + (url.includes('?') ? '&' : '?') + 'cb=' + Date.now();
+  }
+
+  function next(){
+    tried++;
+    if (tried < tryUrls.length) attempt(tryUrls[tried]);
+    else {
+      if (!succeeded){
+        s.status = 'offline';
+        s.lastChecked = Date.now();
+        saveServers(arr);
+        renderSingleStatus(idx);
+      }
+    }
+  }
+
+  // start
+  attempt(tryUrls[0]);
+}
+
+// render a single status row quickly
+function renderSingleStatus(idx){
+  const arr = loadServers(); const s = arr[idx];
+  const lastEl = document.getElementById('last-'+idx);
+  if (lastEl) lastEl.textContent = timeAgo(s.lastChecked);
+  setStatusDot(idx, s.status === 'online');
+  // keep the whole list in sync
+  render();
+}
+
+// initial render
+render();
+
+// keep main page's server count in sync: update element there if open in another tab
+window.addEventListener('storage', (ev)=>{
+  // re-render if servers changed in another tab
+  render();
+});
+
+// listen for manual external update key (helps when other tab changed)
+setInterval(()=>{ render(); }, 7000);
+</script>
+</body>
+</html>
